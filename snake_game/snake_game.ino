@@ -7,6 +7,14 @@
 //errors
 #define SIZE_ERROR -1
 
+#define BLACK 0x00
+#define WHITE 0x01
+#define NB_ROW_MATRIX 8
+
+
+//flags
+bool displayFlag = false;
+bool moveLineFlag = false;
 // Constants related to the pin mapping of the 74595 chip -> dot-matri
 const char LATCH_PIN = 8;   //Pin connected to ST_CP(RCLK) of 74HC595
 const char CLOCK_PIN = 12;  //Pin connected to SH_CP(SRCLK) of 74HC595
@@ -61,8 +69,11 @@ class Snake {
   }
 };*/
 
- 
+uint8_t posLine = 0;
 void setup() {
+  setupTimer();
+  Serial.begin(9600);
+  pinMode(13,OUTPUT);
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
@@ -76,11 +87,35 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 //analogRead(JOY_X_PIN);
- showGrid(testGrid,8);
- delay(1);
+  if(displayFlag){
+    showNextLineGrid(grid,8);
+    displayFlag = false;
+  }
+
+
+ if(moveLineFlag){
+  //erase previous line
+  drawHorizontalLine(posLine, grid, 8, WHITE);
+  drawVerticalLine(posLine, grid, 8, WHITE);
+
+  posLine++;
+
+  if(posLine ==8){
+    posLine =0;
+  }
+
+  drawHorizontalLine(posLine, grid, 8, BLACK);
+  drawVerticalLine(posLine, grid, 8, BLACK);
+
+  moveLineFlag = false;
+ }
+
+
+ //delay(1);
 }
 
 //---FUNCTIONS---//
+
 // Transform a position number into the correspnding position in the 8x8 grid
 void positionToGrid(uint8_t *grid[], uint8_t position_num) {
   
@@ -97,12 +132,50 @@ void applyChangeToShiftRegisterPins(){
   //be ok without any additional delay
   digitalWrite(LATCH_PIN,LOW);
 }
-int showGrid(uint8_t grid[], size_t sizeOfGrid){
+
+int drawHorizontalLine(uint8_t y, uint8_t grid[], size_t sizeOfGrid, uint8_t color){
+
+  if(y<0 || y>=sizeOfGrid || y>= NB_ROW_MATRIX){
+    return SIZE_ERROR;
+  }
+
+  grid[y] = (color == BLACK)? 0xFF : 0x00;
+  return 0;
+  
+}
+
+//draw a vertical line in the grid
+int drawVerticalLine(uint8_t x, uint8_t grid[], size_t sizeOfGrid,  uint8_t color){
+
+   uint8_t value = B10000000 >> x;
+  if(sizeOfGrid>NB_ROW_MATRIX || x < 0){
+    Serial.println("ERROR SIZE drawVerticalLine");
+  }
+
+  if(color == BLACK){
+    for(int i =0; i<sizeOfGrid; i++){
+      grid[i]|= value;
+    }
+ 
+  }else{
+    value = ~(value);
+    
+    for(int i =0; i<sizeOfGrid; i++){
+      grid[i]&= value;
+    }
+  }
+
+  return 0;
+  
+}
+
+//show the next row of the grid on matrix
+int showNextLineGrid(uint8_t grid[], size_t sizeOfGrid){
 
   if(sizeOfGrid > 8){
     return SIZE_ERROR;
   }
-  static uint_fast8_t columnSlect = 0;
+  static uint8_t columnSlect = 0;
   //first we send the row value to the first shift register
   //
   //then we send the colum value to the first shift register,
@@ -122,4 +195,29 @@ int showGrid(uint8_t grid[], size_t sizeOfGrid){
   }
   
   return 0;
+}
+
+
+//--TIMER--//
+void setupTimer(void){
+  //base on https://learn.adafruit.com/multi-tasking-the-arduino-part-2/timers
+  // Timer0 is already used for millis() - we'll just interrupt somewhere
+  // in the middle and call the "Compare A" function below
+
+  OCR0A = 0xAF;
+  TIMSK0 |= _BV(OCIE0A);
+
+}
+
+//is called the timer0 generate an interupt
+SIGNAL(TIMER0_COMPA_vect) {
+  volatile static uint8_t nbInterupt = 0;
+  displayFlag = true;
+
+  nbInterupt++;
+
+  if(nbInterupt == 200){
+    moveLineFlag = true;
+    nbInterupt = 0;
+  }
 }
