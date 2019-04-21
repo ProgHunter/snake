@@ -26,16 +26,6 @@ const char JOY_Y_PIN = A1;  // Y axis of the joystick
 const char JOY_B_PIN = 7;   // Button of the joystick
 
 
-uint8_t testGrid[8] = {B01010101,
-                       B10101010,
-                       B01010101,
-                       B10101010,
-                       B01010101,
-                       B10101010,
-                       B01010101,
-                       B10101010};
-
-
 // Difficulty of the game
 uint8_t difficulty;
 // Grid representing the 8x8 dot-matrix
@@ -69,7 +59,8 @@ class Snake {
   }
 };*/
 
-uint8_t posLine = 0;
+uint8_t posLineX = 0;
+uint8_t posLineY = 0;
 void setup() {
   setupTimer();
   Serial.begin(9600);
@@ -86,7 +77,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-//analogRead(JOY_X_PIN);
+
+
   if(displayFlag){
     showNextLineGrid(grid,8);
     displayFlag = false;
@@ -95,23 +87,18 @@ void loop() {
 
  if(moveLineFlag){
   //erase previous line
-  drawHorizontalLine(posLine, grid, 8, WHITE);
-  drawVerticalLine(posLine, grid, 8, WHITE);
+  drawHorizontalLine(posLineY, grid, 8, WHITE);
+  drawVerticalLine(posLineX, grid, 8, WHITE);
 
-  posLine++;
+  posLineX = map(analogRead(JOY_X_PIN),0,1023,0,8);
+  posLineY = map(analogRead(JOY_Y_PIN),0,1023,0,8);
 
-  if(posLine ==8){
-    posLine =0;
-  }
-
-  drawHorizontalLine(posLine, grid, 8, BLACK);
-  drawVerticalLine(posLine, grid, 8, BLACK);
+  drawHorizontalLine(posLineY, grid, 8, BLACK);
+  drawVerticalLine(posLineX, grid, 8, BLACK);
 
   moveLineFlag = false;
  }
 
-
- //delay(1);
 }
 
 //---FUNCTIONS---//
@@ -216,7 +203,7 @@ SIGNAL(TIMER0_COMPA_vect) {
 
   nbInterupt++;
 
-  if(nbInterupt == 200){
+  if(nbInterupt == 10){
     moveLineFlag = true;
     nbInterupt = 0;
   }
