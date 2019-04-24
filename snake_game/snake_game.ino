@@ -1,6 +1,6 @@
 // ------------------------- SNAKE GAME! ------------------------- //
 // Arduino software that work with a joystick as input and a dot-matrix as output
-// Personnal project created by Olivier Juteau-Desjardins and Pierre-Yves Vincent-Tremblay
+// Personnal project created by Olivier Juteau-Desjardins (@thePro) and Pierre-Yves Vincent-Tremblay (@theNoob)
 // Date: 20 avril 2019
 // --------------------------------------------------------------- //
 
@@ -19,12 +19,36 @@
 #define JOY_Y_PIN A1  // Y axis of the joystick
 #define JOY_B_PIN 7   // Button of the joystick
 
-// Difficulty of the game
-uint8_t difficulty;
-// Representing the position of the dot to eat
-Coord random_dot_position;
-// Dirrection of a moovement
+// Dirrection of a movement
 enum mvt_dir { left, down, right, up, unknown };
+
+// X and Y coordinates in the 8x8 matrix
+class Coord {
+  public:
+  uint8_t x;
+  uint8_t y;
+
+  Coord(uint8_t init_x, uint8_t init_y) {
+    x = init_x;
+    y = init_y;
+  }
+
+  ~Coord() {
+    delete &x;
+    delete &y;
+  }
+
+  bool set_coord_xy(uint8_t new_x, uint8_t new_y) {
+      if(   new_x < MATRIX_MIN
+         || new_x > MATRIX_MAX
+         || new_y < MATRIX_MIN
+         || new_y > MATRIX_MAX)
+        return true;
+      x = new_x;
+      y = new_y;
+      return false;
+  }
+};
 
 // Grid representing the 8x8 dot-matrix
 //       x =
@@ -34,9 +58,9 @@ enum mvt_dir { left, down, right, up, unknown };
 //     ...        7\7
 //
 class Grid {
+  public:
   uint8_t grid[];
 
-  public:
   Grid() {
     grid[MATRIX_SIZE] = {0};
   }
@@ -47,136 +71,118 @@ class Grid {
   
   // Activate a dot on the grid at a position
   void add_dot(Coord *pos) {
-    grid[pos->y] |= (1 << pos->x);
+    grid[pos->y] |= (1 << MATRIX_SIZE - pos->x);
   }
 
   // Deactivate a dot on the grid at a position
   void delete_dot(Coord *pos) {
-    grid[pos->y] &= ~(1 << pos->x);
-  }
-};
-
-// X and Y coordinates in the 8x8 matrix
-class Coord {
-  uint8_t x;
-  uint8_t y;
-
-  public:
-  Coord(uint8_t init_x, uint8_t init_y) {
-    x = init_x;
-    y = init_y;
+    grid[pos->y] &= ~(1 << MATRIX_SIZE - pos->x);
   }
 
-  ~Coord() {
-    delete x;
-    delete y;
-  }
-
-  bool setCoord_XY(uint8_t new_x, uint8_t new_y) {
-      if(   new_x < MATRIX_MIN
-         || new_x > MATRIX_MAX
-         || new_y < MATRIX_MIN
-         || new_y > MATRIX_MAX)
-        return true;
-      x = new_x;
-      y = new_y;
-      return false;
-  }
-  
-  bool moove(enum mvt_dir moovement_direction) {
-    bool error = false;
-    switch(moovement_direction) {
-      case left:
-        if(x <= MATRIX_MIN)
-          error = true;
-        else
-          x--;
-        break;
-      case down:
-        if(y >= MATRIX_MAX)
-          error = true;
-        else
-          y++;
-        break;
-      case right:
-        if(x >= MATRIX_MAX)
-          error = true;
-        else
-          x++;
-        break;
-      case up:
-        if(y <= MATRIX_MIN)
-          error = true;
-        else
-          y--;
-        break;
-      default:
-        error = true;
-    }
-    return error;
-  }
-};
-
-// A part of the snake
-Class Body {
-  Coord *part;
-  Coord *next;
-
-  public:
-  Body(Coord *init_part) {
-    part = init_head;
-    next = NULL;
-  }
-
-  ~Body() {
-    if(part != NULL)
-      part.~Coord();
-    if(next != NULL)
-      next.~Coord();
-  }
-
-  void addNext(Coord *new_next) {
-    next = new_next;
+  void reset() {
+    for(uint8_t i = 0; i < MATRIX_SIZE; i++)
+      grid[i] = 0;
   }
 };
 
 // A gentle snake to play with
-// Implemented as a FIFO (for the moment)
+// Implemented as a static tab of Coords instead of a dynamic FIFO to minimize memory allocation/deallocation
+// Instead, a Coord is created for each body part and the x/y values are updated in them
 class Snake {
-  // Tab that represent the dots that are occupied by the snake on the grid
-  // Keeped in sync with the body position when using the snake's functions
-  Grid positions;
-  enum mouvement_direction next_head_dir;
-  uint_8 body_size;
-  // The snake's head position and next body part
-  Body *head;
-
-  // Construtor of the snake
   public:
-  Snake(enum mouvement_direction init_direction, Body *init_head) {
+  enum mvt_dir next_head_dir;
+  uint8_t body_size;
+  // The snake's position
+  // The head of the snake is @body_size-1, 
+  // since we add a new head every time we eat the random_dot
+  Coord body[MATRIX_SIZE * MATRIX_SIZE];  // Init to NULL ?
+
+  Snake(enum mvt_dir init_direction, Coord *init_head) {
     next_head_dir = init_direction;
-    head = init_head;
+    body[0] = &init_head;
     body_size = 1;
-    &positions = new Grid();
-    positions.add_dot(head->part);
   }
 
   ~Snake() {
-    delete next_head_dir;
-    delete[] position_in_grid;
-    delete body_size;
-    if(*head != NULL)
-      head->~Coord();  // legit ?
+    delete &next_head_dir;
+    for(;body_size > 0; body_size--)
+      body[body_size].~Coord();  // legit ?
+    delete[] body;
+    delete &body_size;
+  }
+
+  // Return true if the next position of the head is valid (not out-grid, not on itself) 
+  bool valid_new_head() {
+    uint8_t head_x = body[body_size-1].x;
+    uint8_t head_y = body[body_size-1].y;
+    // Check for out of borders
+    switch(next_head_dir) {
+      case left:
+        if(head_x <= MATRIX_MIN)
+          return false;
+        head_x--;
+        break;
+      case down:
+        if(head_y >= MATRIX_MAX)
+          return false;
+        head_y++;
+        break;
+      case right:
+        if(head_x >= MATRIX_MAX)
+          return false;
+        head_x++;
+        break;
+      case up:
+        if(head_y <= MATRIX_MIN)
+          return false;
+        head_y--;
+        break;
+      default:
+        return false;
+    }
+    // Check for body
+    // Start at [1] because [0] will be at the present position of [1]
+    for(uint8_t i = 1; i < body_size-1; i++)
+      if(body[i].x == head_x && body[i].y == head_y)
+        return false;
+    return true;
   }
   
-  bool move_update(){
-    // - TODO: FIFO
-    // - Note, cannot go to head->next->part coord if != NULL
-    // - Change for new head (set next), then erase the "next" of body at body_size-1
+  // Move the snake @next_head_dir
+  // Return true if move
+  // To minimize the use of constructors/destructors, the body'coords values will be replaced instead of deleting/creating one.
+  bool move_update() {
+    if(!valid_new_head())
+      return false
+    // Move all the body except the head
+    for(uint8_t i = 0; i < body_size-1; i++) {
+      body[i+1].x = body[i].x;
+      body[i+1].y = body[i].y;
+    }
+    // Move head according to direction
+    switch(next_head_dir) {
+      case left:
+        body[body_size-1].x--;
+        break;
+      case down:
+        body[body_size-1].y++;
+        break;
+      case right:
+        body[body_size-1].x++;
+        break;
+      case right:
+        body[body_size-1].y--;
+        break;
+      // we assume valid_new_head() is cheking default for us
+    }
   }
 };
 
- 
+// Difficulty of the game
+uint8_t difficulty;
+// Representing the position of the dot to eat
+Coord random_dot_position = NULL;
+
 void setup() {
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
@@ -185,12 +191,28 @@ void setup() {
   pinMode(JOY_X_PIN, INPUT);  // Analog
   pinMode(JOY_Y_PIN, INPUT);  // Analog
   pinMode(JOY_B_PIN, INPUT);  // Digital
-  digitalWrite(JOY_B_PIN, HIGH); 
+  digitalWrite(JOY_B_PIN, HIGH);
+
+  // TODO: Create a instance of a class "Game" that has a grid, a snake, a dot and a difficulty
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-//analogRead(JOY_X_PIN);
+  // e.g analogRead(JOY_X_PIN);
+
+  // When starting a new game, cal the reinit_game() on the one created at setup()
 }
 
+
 //---FUNCTIONS---//
+
+// Draw snake and random_dot on grid
+// This fonction shoud be in the Game class once created
+void draw() {
+  grid.reset();
+  
+  for(uint8_t i = 0; i < snake.body_size; i++)
+    grid.add_dot(snake.body[i]);
+    
+  grid.add_dot(random_dot_position);
+}
