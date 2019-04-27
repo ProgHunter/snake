@@ -20,7 +20,13 @@
 #define JOY_B_PIN 7   // Button of the joystick
 
 // Dirrection of a movement
-enum mvt_dir { left, down, right, up, unknown };
+enum mvt_dir { unknown, left, down, right, up };
+
+// Game states..
+enum game_states { in_progress, win, lose };
+
+// Game difficulties
+enum game_difficulties { ease, normal, hard };
 
 // X and Y coordinates in the 8x8 matrix
 class Coord {
@@ -38,15 +44,40 @@ class Coord {
     delete &y;
   }
 
-  bool set_coord_xy(uint8_t new_x, uint8_t new_y) {
-      if(   new_x < MATRIX_MIN
-         || new_x > MATRIX_MAX
-         || new_y < MATRIX_MIN
-         || new_y > MATRIX_MAX)
-        return true;
-      x = new_x;
-      y = new_y;
+  // Use to set pos of the "random_dot_position" of the game
+  // Return false if no place left
+  bool set_random_coord(Coord *coord, Grid *grid) {
+    int random_number = 0;
+    uint8_t free_pos = 0;
+    // Count avable pos for the random dot
+    for(uint8_t i = 0; i < MATRIX_SIZE; i++) {
+      for(uint8_t j = 0 ; j < MATRIX_SIZE; j++) {
+        if(*grid[i] & (1 << MATRIX_SIZE - j) != 0)
+          free_pos++;
+      }
+    }
+    if(!free_pos)
       return false;
+    random_number = rand() % free_pos;
+    // Count back free pos to place the dot
+    for(uint8_t i = 0; i < MATRIX_SIZE; i++) {
+      for(uint8_t j = 0 ; j < MATRIX_SIZE; j++) {
+        if(*grid[i] & (1 << MATRIX_SIZE - j) != 0)
+          if(!random_number) {
+            coord->x = j;
+            coord->y = i;
+            return true;
+          }
+          random_number--;
+      }
+    }
+  }
+
+  // Return if both coords are the same position
+  bool same_pos(Coord *pos1, Coord *pos2) {
+    if(pos1->x == pos2->x && pos1->y == pos2->y)
+      return true;
+    return false;
   }
 };
 
@@ -70,18 +101,29 @@ class Grid {
   }
   
   // Activate a dot on the grid at a position
-  void add_dot(Coord *pos) {
-    grid[pos->y] |= (1 << MATRIX_SIZE - pos->x);
+  void add_dot(Grid *grid, Coord *pos) {
+    *grid[pos->y] |= (1 << MATRIX_SIZE - pos->x);
   }
 
   // Deactivate a dot on the grid at a position
-  void delete_dot(Coord *pos) {
-    grid[pos->y] &= ~(1 << MATRIX_SIZE - pos->x);
+  void delete_dot(Grid *grid, Coord *pos) {
+    *grid[pos->y] &= ~(1 << MATRIX_SIZE - pos->x);
   }
 
-  void reset() {
+  // Reset the grid to 0
+  void reset(Grid *grid) {
     for(uint8_t i = 0; i < MATRIX_SIZE; i++)
-      grid[i] = 0;
+      *grid[i] = 0;
+  }
+
+  // Place the snake and the dot on the grid
+  void update_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
+    grid.reset(grid);
+  
+    for(uint8_t i = 0; i < snake->body_size; i++)
+      grid.add_dot(grid, snake->body[i]);
+    
+    grid.add_dot(grid, random_dot_position);
   }
 };
 
@@ -111,12 +153,21 @@ class Snake {
     delete &body_size;
   }
 
+  // Reset the snake for a new game
+  void reset(Snake *snake) {
+    // TODO
+    // reset next_head_dir to up
+    // delete the snake's body except the head
+    // set body_size to 1
+    // set the pos of the head at (4,4)
+  }
+  
   // Return true if the next position of the head is valid (not out-grid, not on itself) 
-  bool valid_new_head() {
-    uint8_t head_x = body[body_size-1].x;
-    uint8_t head_y = body[body_size-1].y;
+  bool valid_new_head(Snake *snake) {
+    uint8_t head_x = snake->body[body_size-1].x;
+    uint8_t head_y = snake->body[body_size-1].y;
     // Check for out of borders
-    switch(next_head_dir) {
+    switch(snake->next_head_dir) {
       case left:
         if(head_x <= MATRIX_MIN)
           return false;
@@ -143,45 +194,68 @@ class Snake {
     // Check for body
     // Start at [1] because [0] will be at the present position of [1]
     for(uint8_t i = 1; i < body_size-1; i++)
-      if(body[i].x == head_x && body[i].y == head_y)
+      if(snake->body[i].x == head_x && snake->body[i].y == head_y)
         return false;
     return true;
   }
+
+  // Eat dot
+  void eat_dot(Snake *snake, Coord *random_dot_position) {
+    // TODO:
+  }
   
-  // Move the snake @next_head_dir
-  // Return true if move
+  // Move the snake @next_head_dir and update the grid
+  // Return 0 if move, 1 if move and dot eated, 2 if game loss
   // To minimize the use of constructors/destructors, the body'coords values will be replaced instead of deleting/creating one.
-  bool move_update() {
-    if(!valid_new_head())
-      return false
+  uint8_t move_update(Snake *snake, Coord *random_dot_position) {
+    if(!valid_new_head(snake))
+      return 2;
     // Move all the body except the head
-    for(uint8_t i = 0; i < body_size-1; i++) {
-      body[i+1].x = body[i].x;
-      body[i+1].y = body[i].y;
+    for(uint8_t i = 0; i < snake->body_size-1; i++) {
+      snake->body[i+1].x = snake->body[i].x;
+      snake->body[i+1].y = snake->body[i].y;
     }
     // Move head according to direction
-    switch(next_head_dir) {
+    switch(snake->next_head_dir) {
       case left:
-        body[body_size-1].x--;
+        snake->body[body_size-1].x--;
         break;
       case down:
-        body[body_size-1].y++;
+        snake->body[body_size-1].y++;
         break;
       case right:
-        body[body_size-1].x++;
+        snake->body[body_size-1].x++;
         break;
       case right:
-        body[body_size-1].y--;
+        snake->body[body_size-1].y--;
         break;
       // we assume valid_new_head() is cheking default for us
     }
+    // Eat dot ?
+    if(snake->body[snake->body_size-1].same_pos(&(snake->body[snake->body_size-1]), random_dot_position)) {
+      snake->eat_dot(snake, random_dot_position);
+      return 1;
+    }
+    return 0;
   }
 };
 
 // Difficulty of the game
 uint8_t difficulty;
+// The game state
+enum game_states the_game_state = in_progress;
+// Flag, restart a game
+bool restart_game = false;
+// Flag, responsible for game progression speed control
+bool game_progress = false;
+// The grid of the game
+Grid grid = NULL;
 // Representing the position of the dot to eat
 Coord random_dot_position = NULL;
+// The snaaaaaaaake!!
+Snake snake = NULL;
+// For random number
+time_t t;
 
 void setup() {
   pinMode(LATCH_PIN, OUTPUT);
@@ -193,26 +267,62 @@ void setup() {
   pinMode(JOY_B_PIN, INPUT);  // Digital
   digitalWrite(JOY_B_PIN, HIGH);
 
-  // TODO: Create a instance of a class "Game" that has a grid, a snake, a dot and a difficulty
+  // Intializes random number generator
+  srand((unsigned) time(&t));
+   
+  grid = Grid();
+  snake = Snake(up, &(Coord(4,4))); //  ?
+  random_dot_position = Coord(0,0);
+  random_dot_position.set_random_coord(&random_dot_position, &grid);
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  // e.g analogRead(JOY_X_PIN);
+  // Check flag to restart the game
+  if(restart_game)
+    new_game(&grid, &snake, &random_dot_position, &the_game_state);
+    
+  if(the_game_state == in_progress) {
+    // TODO: Check for controler input here
+    // Affect the "next_head_dir" member of the snake (joystick) and the "restart_game" flag of the programm (button)
 
-  // When starting a new game, cal the reinit_game() on the one created at setup()
+    // Check flag for game progression (speed control)
+    if(game_progress) {
+      switch(snake.move_update(&snake, &random_dot_position)) { // TODO: Check the return value to change the_game_state if necessary
+        case 1:
+          if(random_dot_position.set_random_coord(&random_dot_position, &grid))
+          the_game_state = win;
+          break;
+        case 2:
+          the_game_state = lose;
+          break;
+      }
+      grid.update_snake_and_dot(&grid, &snake, &random_dot_position);
+    }
+
+    // Check flag to redraw the matrix
+    if(refresh_screen)
+      draw(&grid);
+  } else if(the_game_state == win) {
+    // TODO: display winner screen
+  } else if(the_game_state == lose){
+    // TODO: display loser screen
+  }
 }
 
 
-//---FUNCTIONS---//
+//---GENERAL FUNCTIONS---//
 
-// Draw snake and random_dot on grid
-// This fonction shoud be in the Game class once created
-void draw() {
-  grid.reset();
-  
-  for(uint8_t i = 0; i < snake.body_size; i++)
-    grid.add_dot(snake.body[i]);
-    
-  grid.add_dot(random_dot_position);
+// Do all the job to end the present game and set a new one
+void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, enum game_states *the_game_state) {
+  grid->reset(grid);
+  snake->reset(snake);
+  random_dot_position->set_random_coord(random_dot_position, grid);
+  *the_game_state = in_progress;
+}
+
+// TODO: function for joystick's input :)
+
+// Draw the grid on the physical dot-matrix
+void draw(Grid *grid) {
+  // TODO: Send grid data to dot-matrix here
 }
