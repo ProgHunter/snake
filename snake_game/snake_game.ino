@@ -43,11 +43,6 @@ class Coord {
     y = init_y;
   }
 
-  ~Coord() {
-    delete &x;
-    delete &y;
-  }
-
   // Use to set pos of the "random_dot_position" of the game
   // Return false if no place LEFT
   bool set_random_coord(Coord *coord, Grid *grid) {
@@ -103,73 +98,87 @@ class Grid {
   ~Grid() {
     delete[] grid;
   }
-  
+
   // Activate a dot on the grid at a position
   void add_dot(Grid *grid, Coord *pos) {
-    *grid[pos->y] |= (1 << MATRIX_SIZE - pos->x);
+    grid[pos->y] |= (1 << MATRIX_SIZE - pos->x);
   }
 
   // Deactivate a dot on the grid at a position
   void delete_dot(Grid *grid, Coord *pos) {
-    *grid[pos->y] &= ~(1 << MATRIX_SIZE - pos->x);
+    grid[pos->y] &= ~(1 << MATRIX_SIZE - pos->x);
   }
 
   // Reset the grid to 0
   void reset(Grid *grid) {
     for(uint8_t i = 0; i < MATRIX_SIZE; i++)
-      *grid[i] = 0;
+      grid[i] = 0;
   }
 
   // Place the snake and the dot on the grid
   void UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
     grid.reset(grid);
-  
-    for(uint8_t i = 0; i < snake->body_size; i++)
-      grid.add_dot(grid, snake->body[i]);
-    
+
+    Body *temp_body = snake->head;
+    for(uint8_t i = 0; i < snake->body_size; i++) {
+       if(i > 0)
+        temp_body = temp_body->next_part;
+       grid.add_dot(grid, temp_body->part);
+    }
+
     grid.add_dot(grid, random_dot_position);
   }
 };
 
+class Body {
+  public:
+  Coord *part;
+  Body *next_part;
+
+  Body(Coord *init_part, Body *init_next_part) {
+    part = init_part;
+    nest_part = init_next_part;
+  }
+
+  ~Body() {
+    if(part)
+      part->~Coord();
+  }
+}
+
 // A gentle snake to play with
-// Implemented as a static tab of Coords instead of a dynamic FIFO to minimize memory allocation/deallocation
-// Instead, a Coord is created for each body part and the x/y values are UPdated in them
+// Implemented as a FIFO
+// Instead, a Coord is created for each body part and the x/y values are updated in them
 class Snake {
   public:
   Mvt_dir next_head_dir;
   uint8_t body_size;
   // The snake's position
-  // The head of the snake is @body_size-1, 
+  // The head of the snake is @body_size-1,
   // since we add a new head every time we eat the random_dot
-  Coord body[MATRIX_SIZE * MATRIX_SIZE];  // Init to NULL ?
+  Body *head;
 
   Snake(Mvt_dir init_direction, Coord *init_head) {
     next_head_dir = init_direction;
-    body[0] = &init_head;
+    head = new Body(init_head, NULL);
     body_size = 1;
   }
 
   ~Snake() {
-    delete &next_head_dir;
-    for(;body_size > 0; body_size--)
-      body[body_size].~Coord();  // legit ?
-    delete[] body;
-    delete &body_size;
+    for(;body_size > 0; body_size--) {
+     Body *futur_head = NULL;
+     if(head->next_part)
+      futur_head = head->next_part;
+     head->~Body();
+     if(futur_head)
+      head = futur_head;
+    }
   }
 
-  // Reset the snake for a new game
-  void reset(Snake *snake) {
-    // TODO
-    // reset next_head_dir to UP
-    // delete the snake's body except the head
-    // set body_size to 1
-    // set the pos of the head at (4,4)
-  }
-  
-  // Return true if the next position of the head is valid (not out-grid, not on itself) 
+  // Return true if the next position of the head is valid (not out-grid, not on itself)
   bool valid_new_head(Snake *snake) {
-    uint8_t head_x = snake->body[body_size-1].x;
-    uint8_t head_y = snake->body[body_size-1].y;
+    uint8_t head_x = snake->head->part->x;
+    uint8_t head_y = snake->head->part->y;
     // Check for out of borders
     switch(snake->next_head_dir) {
       case LEFT:
@@ -196,30 +205,37 @@ class Snake {
         return false;
     }
     // Check for body
-    // Start at [1] because [0] will be at the present position of [1]
-    for(uint8_t i = 1; i < body_size-1; i++)
-      if(snake->body[i].x == head_x && snake->body[i].y == head_y)
+    Body *current_body_part_checked = snake->head;
+    // Start at 1 because we skip head, finish at body_size-1 because the last body part wont be there
+    for(uint8_t i = 1; i < snake->body_size-1; i++) {
+      current_body_part_checked = current_body_part_checked->next_part;
+      if(current_body_part_checked->part->x == head_x && current_body_part_checked->part->y == head_y)
         return false;
+    }
     return true;
   }
 
   // Eat dot
   void eat_dot(Snake *snake, Coord *random_dot_position) {
-    // TODO:
+    snake->head = new Body(new Coord(random_dot_position->x, random_dot_position->y), snake->head);
+    snake->body_size++;
   }
-  
+
   // Move the snake @next_head_dir and UPdate the grid
   // Return 0 if move, 1 if move and dot eated, 2 if game loss
   // To minimize the use of constructors/destructors, the body'coords values will be replaced instead of deleting/creating one.
-  uint8_t move_UPdate(Snake *snake, Coord *random_dot_position) {
+  uint8_t move_update(Snake *snake, Coord *random_dot_position) {
+    bool dot_eated = false;
     if(!valid_new_head(snake))
       return 2;
-    // Move all the body except the head
-    for(uint8_t i = 0; i < snake->body_size-1; i++) {
-      snake->body[i+1].x = snake->body[i].x;
-      snake->body[i+1].y = snake->body[i].y;
+
+    // Eat dot ?
+    if(snake->head->part->same_pos(snake->head->part, random_dot_position)) {
+      snake->eat_dot(snake, random_dot_position);
+      dot_eated = true;
     }
-    // Move head according to direction
+    uint8_t head_x = snake->head->part->x;
+    uint8_t head_y = snake->head->part->y;
     switch(snake->next_head_dir) {
       case LEFT:
         snake->body[body_size-1].x--;
@@ -235,11 +251,16 @@ class Snake {
         break;
       // we assume valid_new_head() is cheking default for us
     }
-    // Eat dot ?
-    if(snake->body[snake->body_size-1].same_pos(&(snake->body[snake->body_size-1]), random_dot_position)) {
-      snake->eat_dot(snake, random_dot_position);
+    // Create a head according to direction
+    snake->head = new Body(new Coord(head_x, head_y), snake->head);
+    Body *temp_body = snake->head;
+    for(int i = 1; i < snake->body_size-1; i++)
+      temp_body = temp_body->next_part;
+    // Delete the last part of the snake
+    temp_body->next_part->~Body();
+    temp_body->next_part = NULL;
+    if(dot_eated)
       return 1;
-    }
     return 0;
   }
 };
@@ -274,7 +295,7 @@ void setup() {
 
   // Intializes random number generator
   srand((unsigned) time(&t));
-   
+
   grid = Grid();
   snake = Snake(UP, &(Coord(4,4))); //  ?
   random_dot_position = Coord(0,0);
@@ -285,7 +306,7 @@ void loop() {
   // Check flag to restart the game
   if(restart_game)
     new_game(&grid, &snake, &random_dot_position, &the_game_state);
-    
+
   if(the_game_state == in_progress) {
     // TODO: Check for controler input here
     // Affect the "next_head_dir" member of the snake (joystick) and the "restart_game" flag of the programm (button)
@@ -323,7 +344,8 @@ void loop() {
 // Do all the job to end the present game and set a new one
 void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, enum game_states *the_game_state) {
   grid->reset(grid);
-  snake->reset(snake);
+  snake->~Snake();
+  snake = new Snake(up, new Coord(4,4));
   random_dot_position->set_random_coord(random_dot_position, grid);
   *the_game_state = in_progress;
 }
@@ -336,7 +358,7 @@ void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, enum game_st
 Mvt_dir getDirection(){
   int16_t x = analogRead(JOY_X_PIN)-512;
   int16_t y = analogRead(JOY_Y_PIN)-512;
-  
+
   int16_t absX = abs(x);
   int61_t absY = abs(y);
 
@@ -360,7 +382,7 @@ void draw(Grid *grid) {
   //then we send the colum value to the first shift register,
   //this means that the row value is shift to the second shift
   //register by the first shift register
-  
+
   digitalWrite(LATCH_PIN,LOW);
   shiftOut(DATA_PIN,CLOCK_PIN,MSBFIRST,grid->grid[columnSlect]);//send row to the matrix
 
