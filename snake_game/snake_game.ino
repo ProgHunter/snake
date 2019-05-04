@@ -15,8 +15,8 @@
 #define DATA_PIN 11   //Pin connected to DS(SER) of 74HC595
 
 // Constants related to the pin mapping of the joystick
-#define JOY_X_PIN A0  // X axis of the joystick
-#define JOY_Y_PIN A1  // Y axis of the joystick
+#define JOY_X_PIN A1  // X axis of the joystick
+#define JOY_Y_PIN A0  // Y axis of the joystick
 #define JOY_B_PIN 7   // Button of the joystick
 
 //dead zone of the joystick
@@ -262,6 +262,7 @@ Snake snake = NULL;
 time_t t;
 
 void setup() {
+  setupTimer();
   pinMode(LATCH_PIN, OUTPUT);
   pinMode(CLOCK_PIN, OUTPUT);
   pinMode(DATA_PIN, OUTPUT);
@@ -301,11 +302,14 @@ void loop() {
           break;
       }
       grid.UPdate_snake_and_dot(&grid, &snake, &random_dot_position);
+      game_progress = false;
     }
 
     // Check flag to redraw the matrix
-    if(refresh_screen)
+    if(refresh_screen){
       draw(&grid);
+      refresh_screen = false;
+    }
   } else if(the_game_state == win) {
     // TODO: display winner screen
   } else if(the_game_state == lose){
@@ -324,6 +328,10 @@ void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, enum game_st
   *the_game_state = in_progress;
 }
 
+
+
+
+
 // TODO: function for joystick's input :)
 Mvt_dir getDirection(){
   int16_t x = analogRead(JOY_X_PIN)-512;
@@ -335,9 +343,9 @@ Mvt_dir getDirection(){
   if(absX<DEAD_ZONE && absY<DEAD_ZONE){
     return UNKNOWN;
   }else if(absX<absY){
-    return (y<0)? DOWN : UP;
+    return (y>0)? DOWN : UP;
   }else{
-    return (x<0)? LEFT : RIGTH;
+    return (x>0)? LEFT : RIGTH;
   }
 }
 
@@ -363,5 +371,29 @@ void draw(Grid *grid) {
   columnSlect++;
   if(columnSlect>=sizeOfGrid){
     columnSlect = 0;//roll back
+  }
+}
+
+//--TIMER--//
+void setupTimer(void){
+  //base on https://learn.adafruit.com/multi-tasking-the-arduino-part-2/timers
+  // Timer0 is already used for millis() - we'll just interrupt somewhere
+  // in the middle and call the "Compare A" function below
+
+  OCR0A = 0xAF;
+  TIMSK0 |= _BV(OCIE0A);
+
+}
+
+//is called when the timer0 generate an interupt
+SIGNAL(TIMER0_COMPA_vect) {
+  volatile static uint8_t nbInterupt = 0;
+  game_progress = true;
+
+  nbInterupt++;
+
+  if(nbInterupt == 10){
+    refresh_screen = true;
+    nbInterupt = 0;
   }
 }
