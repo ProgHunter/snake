@@ -19,8 +19,12 @@
 #define JOY_Y_PIN A1  // Y axis of the joystick
 #define JOY_B_PIN 7   // Button of the joystick
 
+//dead zone of the joystick
+const int16_t DEAD_ZONE = 50;
+
 // Dirrection of a movement
-enum mvt_dir { unknown, left, down, right, up };
+
+typedef enum mvt_dir { UNKNOWN, LEFT, DOWN, RIGTH, UP } Mvt_dir;
 
 // Game states..
 enum game_states { in_progress, win, lose };
@@ -45,7 +49,7 @@ class Coord {
   }
 
   // Use to set pos of the "random_dot_position" of the game
-  // Return false if no place left
+  // Return false if no place LEFT
   bool set_random_coord(Coord *coord, Grid *grid) {
     int random_number = 0;
     uint8_t free_pos = 0;
@@ -117,7 +121,7 @@ class Grid {
   }
 
   // Place the snake and the dot on the grid
-  void update_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
+  void UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
     grid.reset(grid);
   
     for(uint8_t i = 0; i < snake->body_size; i++)
@@ -129,17 +133,17 @@ class Grid {
 
 // A gentle snake to play with
 // Implemented as a static tab of Coords instead of a dynamic FIFO to minimize memory allocation/deallocation
-// Instead, a Coord is created for each body part and the x/y values are updated in them
+// Instead, a Coord is created for each body part and the x/y values are UPdated in them
 class Snake {
   public:
-  enum mvt_dir next_head_dir;
+  Mvt_dir next_head_dir;
   uint8_t body_size;
   // The snake's position
   // The head of the snake is @body_size-1, 
   // since we add a new head every time we eat the random_dot
   Coord body[MATRIX_SIZE * MATRIX_SIZE];  // Init to NULL ?
 
-  Snake(enum mvt_dir init_direction, Coord *init_head) {
+  Snake(Mvt_dir init_direction, Coord *init_head) {
     next_head_dir = init_direction;
     body[0] = &init_head;
     body_size = 1;
@@ -156,7 +160,7 @@ class Snake {
   // Reset the snake for a new game
   void reset(Snake *snake) {
     // TODO
-    // reset next_head_dir to up
+    // reset next_head_dir to UP
     // delete the snake's body except the head
     // set body_size to 1
     // set the pos of the head at (4,4)
@@ -168,22 +172,22 @@ class Snake {
     uint8_t head_y = snake->body[body_size-1].y;
     // Check for out of borders
     switch(snake->next_head_dir) {
-      case left:
+      case LEFT:
         if(head_x <= MATRIX_MIN)
           return false;
         head_x--;
         break;
-      case down:
+      case DOWN:
         if(head_y >= MATRIX_MAX)
           return false;
         head_y++;
         break;
-      case right:
+      case RIGTH:
         if(head_x >= MATRIX_MAX)
           return false;
         head_x++;
         break;
-      case up:
+      case UP:
         if(head_y <= MATRIX_MIN)
           return false;
         head_y--;
@@ -204,10 +208,10 @@ class Snake {
     // TODO:
   }
   
-  // Move the snake @next_head_dir and update the grid
+  // Move the snake @next_head_dir and UPdate the grid
   // Return 0 if move, 1 if move and dot eated, 2 if game loss
   // To minimize the use of constructors/destructors, the body'coords values will be replaced instead of deleting/creating one.
-  uint8_t move_update(Snake *snake, Coord *random_dot_position) {
+  uint8_t move_UPdate(Snake *snake, Coord *random_dot_position) {
     if(!valid_new_head(snake))
       return 2;
     // Move all the body except the head
@@ -217,16 +221,16 @@ class Snake {
     }
     // Move head according to direction
     switch(snake->next_head_dir) {
-      case left:
+      case LEFT:
         snake->body[body_size-1].x--;
         break;
-      case down:
+      case DOWN:
         snake->body[body_size-1].y++;
         break;
-      case right:
+      case RIGTH:
         snake->body[body_size-1].x++;
         break;
-      case right:
+      case RIGTH:
         snake->body[body_size-1].y--;
         break;
       // we assume valid_new_head() is cheking default for us
@@ -271,7 +275,7 @@ void setup() {
   srand((unsigned) time(&t));
    
   grid = Grid();
-  snake = Snake(up, &(Coord(4,4))); //  ?
+  snake = Snake(UP, &(Coord(4,4))); //  ?
   random_dot_position = Coord(0,0);
   random_dot_position.set_random_coord(&random_dot_position, &grid);
 }
@@ -287,7 +291,7 @@ void loop() {
 
     // Check flag for game progression (speed control)
     if(game_progress) {
-      switch(snake.move_update(&snake, &random_dot_position)) { // TODO: Check the return value to change the_game_state if necessary
+      switch(snake.move_UPdate(&snake, &random_dot_position)) { // TODO: Check the return value to change the_game_state if necessary
         case 1:
           if(random_dot_position.set_random_coord(&random_dot_position, &grid))
           the_game_state = win;
@@ -296,7 +300,7 @@ void loop() {
           the_game_state = lose;
           break;
       }
-      grid.update_snake_and_dot(&grid, &snake, &random_dot_position);
+      grid.UPdate_snake_and_dot(&grid, &snake, &random_dot_position);
     }
 
     // Check flag to redraw the matrix
@@ -321,8 +325,43 @@ void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, enum game_st
 }
 
 // TODO: function for joystick's input :)
+Mvt_dir getDirection(){
+  int16_t x = analogRead(JOY_X_PIN)-512;
+  int16_t y = analogRead(JOY_Y_PIN)-512;
+  
+  int16_t absX = abs(x);
+  int61_t absY = abs(y);
+
+  if(absX<DEAD_ZONE && absY<DEAD_ZONE){
+    return UNKNOWN;
+  }else if(absX<absY){
+    return (y<0)? DOWN : UP;
+  }else{
+    return (x<0)? LEFT : RIGTH;
+  }
+}
+
+
 
 // Draw the grid on the physical dot-matrix
 void draw(Grid *grid) {
-  // TODO: Send grid data to dot-matrix here
+
+  static uint8_t columnSlect = 0;
+  //first we send the row value to the first shift register
+  //
+  //then we send the colum value to the first shift register,
+  //this means that the row value is shift to the second shift
+  //register by the first shift register
+  
+  digitalWrite(LATCH_PIN,LOW);
+  shiftOut(DATA_PIN,CLOCK_PIN,MSBFIRST,grid->grid[columnSlect]);//send row to the matrix
+
+  //select the rigth column
+  shiftOut(DATA_PIN,CLOCK_PIN,MSBFIRST, ~(0x01 << columnSlect));
+  applyChangeToShiftRegisterPins();
+
+  columnSlect++;
+  if(columnSlect>=sizeOfGrid){
+    columnSlect = 0;//roll back
+  }
 }
