@@ -184,6 +184,22 @@ int showNextLineGrid(uint8_t grid[], size_t sizeOfGrid){
   return 0;
 }
 
+// TODO: function for joystick's input :)
+Mvt_dir getDirection(){
+  int16_t x = analogRead(JOY_X_PIN)-512;
+  int16_t y = analogRead(JOY_Y_PIN)-512;
+  
+  int16_t absX = abs(x);
+  int61_t absY = abs(y);
+
+  if(absX<DEAD_ZONE && absY<DEAD_ZONE){
+    return UNKNOWN;
+  }else if(absX<absY){
+    return (y<0)? DOWN : UP;
+  }else{
+    return (x<0)? LEFT : RIGTH;
+  }
+}
 
 //--TIMER--//
 void setupTimer(void){
