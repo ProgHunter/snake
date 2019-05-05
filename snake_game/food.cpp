@@ -1,15 +1,16 @@
 #include "Food.h"
 
-Food::Food(/* args */)
+Food::Food(Coord *init_pos)
 {
+    location = init_pos;
 }
 
 Food::~Food()
 {
+    location->~Coord();
 }
 
-
-bool Food::set_random_coord(Coord *coord, Grid *grid) {
+bool Food::set_random_coord(Food *ze_food, Grid *grid) {
     int random_number = 0;
     uint8_t free_pos = 0;
     // Count avable pos for the random dot
@@ -27,8 +28,8 @@ bool Food::set_random_coord(Coord *coord, Grid *grid) {
         for(uint8_t j = 0 ; j < MATRIX_SIZE; j++) {
         if(*grid[i] & (1 << MATRIX_SIZE - j) != 0)
             if(!random_number) {
-            coord->x = j;
-            coord->y = i;
+            ze_food->location->x = j;
+            ze_food->localisation->y = i;
             return true;
             }
             random_number--;

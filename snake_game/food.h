@@ -4,11 +4,11 @@
 class Food
 {
 private:
-    /* data */
+    Coord *location;
 public:
-    Food(/* args */);
+    Food(Coord *init_pos);
     ~Food();
-    bool Food::set_random_coord(Coord *coord, Grid *grid);
+    bool Food::set_random_coord(Food *ze_food, Grid *grid);
 };
 #define FOOD_H
 #endif

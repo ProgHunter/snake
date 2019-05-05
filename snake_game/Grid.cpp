@@ -24,7 +24,7 @@ void Grid::reset(Grid *grid) {
         grid[i] = 0;
 }
 
-void Grid::UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
+void Grid::update_snake_and_food(Grid *grid, Snake *snake, Food *ze_food){
     grid.reset(grid);
 
     Body *temp_body = snake->head;
@@ -34,5 +34,5 @@ void Grid::UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_posi
         grid.add_dot(grid, temp_body->part);
     }
 
-    grid.add_dot(grid, random_dot_position);
+    grid.add_dot(grid, ze_food->location);
 }

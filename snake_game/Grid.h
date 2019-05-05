@@ -27,6 +27,6 @@ class Grid {
   void reset(Grid *grid);
 
   // Place the snake and the dot on the grid
-  void UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position);
+  void update_snake_and_food(Grid *grid, Snake *snake, Food *ze_food);
 #define GRID_H
 #endif

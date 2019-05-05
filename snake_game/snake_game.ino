@@ -21,7 +21,7 @@ bool game_progress = false;
 // The grid of the game
 Grid grid = NULL;
 // Representing the position of the dot to eat
-Food foodPosition = NULL;
+Food ze_food = NULL;
 // The snaaaaaaaake!!
 Snake snake = NULL;
 // For random number
@@ -42,32 +42,32 @@ void setup() {
   srand((unsigned) time(&t));
 
   grid = Grid();
-  snake = Snake(UP, &(Coord(4,4))); //  ?
-  foodPosition = Food();
-  foodPosition.set_random_coord(&foodPosition, &grid);
+  snake = Snake(UP, new Coord(4,4));
+  ze_food = Food(new Coord(0,0));
+  ze_food.set_random_coord(&ze_food, &grid);
 }
 
 void loop() {
   // Check flag to restart the game
   if(restart_game)
-    new_game(&grid, &snake, &foodPosition, &the_game_state);
+    new_game(&grid, &snake, &ze_food, &the_game_state);
 
-  if(the_game_state == in_progress) {
+  if(the_game_state == IN_PROGRESS) {
     // TODO: Check for controler input here
     // Affect the "next_head_dir" member of the snake (joystick) and the "restart_game" flag of the programm (button)
 
     // Check flag for game progression (speed control)
     if(game_progress) {
-      switch(snake.move_UPdate(&snake, &foodPosition)) { // TODO: Check the return value to change the_game_state if necessary
+      switch(snake.move_update(&snake, &ze_food)) { // TODO: Check the return value to change the_game_state if necessary
         case 1:
-          if(foodPosition.set_random_coord(&foodPosition, &grid))
-          the_game_state = win;
+          if(ze_food.set_random_coord(&ze_food, &grid))
+          the_game_state = WIN;
           break;
         case 2:
-          the_game_state = lose;
+          the_game_state = LOSE;
           break;
       }
-      grid.UPdate_snake_and_dot(&grid, &snake, &foodPosition);
+      grid.update_snake_and_food(&grid, &snake, &ze_food);
       game_progress = false;
     }
 
@@ -87,11 +87,11 @@ void loop() {
 //---GENERAL FUNCTIONS---//
 
 // Do all the job to end the present game and set a new one
-void new_game(Grod *grid, Snake *snake, Coord *foodPosition, Game_states *the_game_state) {
+void new_game(Grod *grid, Snake *snake, Food *ze_food, Game_states *the_game_state) {
   grid->reset(grid);
   snake->~Snake();
   snake = new Snake(up, new Coord(4,4));
-  foodPosition->set_random_coord(foodPosition, grid);
+  ze_food->set_random_coord(ze_food, grid);
   *the_game_state = IN_PROGRESS;
 }
 

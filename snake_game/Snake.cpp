@@ -56,19 +56,19 @@ bool Snake::valid_new_head(Snake *snake) {
     return true;
 }
 
-void Snake::eat_dot(Snake *snake, Coord *random_dot_position) {
-    snake->head = new Body(new Coord(random_dot_position->x, random_dot_position->y), snake->head);
+void Snake::eat_food(Snake *snake, Food *ze_food) {
+    snake->head = new Body(new Coord(ze_food->location->x, ze_food->location->y), snake->head);
     snake->body_size++;
 }
 
-uint8_t Snake::move_update(Snake *snake, Coord *random_dot_position) {
-    bool dot_ate = false;
+uint8_t Snake::move_update(Snake *snake, Food *ze_food) {
+    bool food_ate = false;
     if(!valid_new_head(snake))
         return 2;
     // Eat dot ?
-    if(snake->head->part->same_pos(snake->head->part, random_dot_position)) {
-        snake->eat_dot(snake, random_dot_position);
-        dot_eated = true;
+    if(snake->head->part->same_pos(snake->head->part, ze_food->location)) {
+        snake->eat_dot(snake, ze_food);
+        food_eated = true;
     }
     uint8_t head_x = snake->head->part->x;
     uint8_t head_y = snake->head->part->y;
@@ -95,7 +95,7 @@ uint8_t Snake::move_update(Snake *snake, Coord *random_dot_position) {
     // Delete the last part of the snake
     temp_body->next_part->~Body();
     temp_body->next_part = NULL;
-    if(dot_eated)
+    if(food_eated)
         return 1;
     return 0;
 }
