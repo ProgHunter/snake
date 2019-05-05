@@ -3,33 +3,12 @@
 // Personnal project created by Olivier Juteau-Desjardins (@thePro) and Pierre-Yves Vincent-Tremblay (@theNoob)
 // Date: 20 avril 2019
 // --------------------------------------------------------------- //
-
-// Constant related to the square dot-matrix size
-#define MATRIX_MIN 0
-#define MATRIX_MAX 7
-#define MATRIX_SIZE 8
-
-// Constants related to the pin mapping of the 74595 chip -> dot-matrix
-#define LATCH_PIN 8   //Pin connected to ST_CP(RCLK) of 74HC595
-#define CLOCK_PIN 12  //Pin connected to SH_CP(SRCLK) of 74HC595
-#define DATA_PIN 11   //Pin connected to DS(SER) of 74HC595
-
-// Constants related to the pin mapping of the joystick
-#define JOY_X_PIN A1  // X axis of the joystick
-#define JOY_Y_PIN A0  // Y axis of the joystick
-#define JOY_B_PIN 7   // Button of the joystick
-
-//dead zone of the joystick
-const int16_t DEAD_ZONE = 50;
-
-// Dirrection of a movement
-typedef enum mvt_dir { UNKNOWN, LEFT, DOWN, RIGTH, UP } Mvt_dir;
-
-// Game states..
-typedef enum game_states { IN_PROGRESS, WIN, LOSE } Game_states;
-
-// Game difficulties
-typedef enum game_difficulties { EASE, NORMAL, HARD } Game_difficulties;
+#include "Body.h"
+#include "Coord.h"
+#include "Grid.h"
+#include "Snake.h"
+#include "const.h"
+#include "Food.h"
 
 // Difficulty of the game
 uint8_t difficulty;
@@ -42,7 +21,7 @@ bool game_progress = false;
 // The grid of the game
 Grid grid = NULL;
 // Representing the position of the dot to eat
-Coord random_dot_position = NULL;
+Food foodPosition = NULL;
 // The snaaaaaaaake!!
 Snake snake = NULL;
 // For random number
@@ -64,14 +43,14 @@ void setup() {
 
   grid = Grid();
   snake = Snake(UP, &(Coord(4,4))); //  ?
-  random_dot_position = Coord(0,0);
-  random_dot_position.set_random_coord(&random_dot_position, &grid);
+  foodPosition = Food();
+  foodPosition.set_random_coord(&foodPosition, &grid);
 }
 
 void loop() {
   // Check flag to restart the game
   if(restart_game)
-    new_game(&grid, &snake, &random_dot_position, &the_game_state);
+    new_game(&grid, &snake, &foodPosition, &the_game_state);
 
   if(the_game_state == in_progress) {
     // TODO: Check for controler input here
@@ -79,16 +58,16 @@ void loop() {
 
     // Check flag for game progression (speed control)
     if(game_progress) {
-      switch(snake.move_UPdate(&snake, &random_dot_position)) { // TODO: Check the return value to change the_game_state if necessary
+      switch(snake.move_UPdate(&snake, &foodPosition)) { // TODO: Check the return value to change the_game_state if necessary
         case 1:
-          if(random_dot_position.set_random_coord(&random_dot_position, &grid))
+          if(foodPosition.set_random_coord(&foodPosition, &grid))
           the_game_state = win;
           break;
         case 2:
           the_game_state = lose;
           break;
       }
-      grid.UPdate_snake_and_dot(&grid, &snake, &random_dot_position);
+      grid.UPdate_snake_and_dot(&grid, &snake, &foodPosition);
       game_progress = false;
     }
 
@@ -108,11 +87,11 @@ void loop() {
 //---GENERAL FUNCTIONS---//
 
 // Do all the job to end the present game and set a new one
-void new_game(Grod *grid, Snake *snake, Coord *random_dot_position, Game_states *the_game_state) {
+void new_game(Grod *grid, Snake *snake, Coord *foodPosition, Game_states *the_game_state) {
   grid->reset(grid);
   snake->~Snake();
   snake = new Snake(up, new Coord(4,4));
-  random_dot_position->set_random_coord(random_dot_position, grid);
+  foodPosition->set_random_coord(foodPosition, grid);
   *the_game_state = IN_PROGRESS;
 }
 

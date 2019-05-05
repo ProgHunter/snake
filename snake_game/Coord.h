@@ -1,6 +1,6 @@
 // X and Y coordinates in the 8x8 matrix
 #include <Arduino.h>
-#include "Grid.h"
+
 #ifndef COORD_H
 
 // X and Y coordinates in the 8x8 matrix
