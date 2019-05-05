@@ -1,3 +1,4 @@
+// X and Y coordinates in the 8x8 matrix
 #include <Arduino.h>
 #include "Grid.h"
 #ifndef COORD_H
@@ -15,4 +16,4 @@ class Coord {
   bool same_pos(Coord *pos1, Coord *pos2);
 };
 #define COORD_H
-#endif 
+#endif

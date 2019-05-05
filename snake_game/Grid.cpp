@@ -24,7 +24,6 @@ void Grid::reset(Grid *grid) {
         grid[i] = 0;
 }
 
-// Place the snake and the dot on the grid
 void Grid::UPdate_snake_and_dot(Grid *grid, Snake *snake, Coord *random_dot_position){
     grid.reset(grid);
 
