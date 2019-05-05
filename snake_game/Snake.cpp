@@ -74,16 +74,16 @@ uint8_t Snake::move_update(Snake *snake, Food *ze_food) {
     uint8_t head_y = snake->head->part->y;
     switch(snake->next_head_dir) {
         case LEFT:
-            snake->body[body_size-1].x--;
+            head_x--;
             break;
         case DOWN:
-            snake->body[body_size-1].y++;
+            head_y++;
             break;
         case RIGTH:
-            snake->body[body_size-1].x++;
+            head_x++;
             break;
         case RIGTH:
-            snake->body[body_size-1].y--;
+            head_y--;
             break;
             // we assume valid_new_head() is checking default for us
     }
