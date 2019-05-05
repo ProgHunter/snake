@@ -4,8 +4,6 @@ Coord::Coord(uint8_t init_x, uint8_t init_y) {
     y = init_y;
 }
 
-// Use to set pos of the "random_dot_position" of the game
-// Return false if no place LEFT
 bool Coord::set_random_coord(Coord *coord, Grid *grid) {
     int random_number = 0;
     uint8_t free_pos = 0;
@@ -32,9 +30,9 @@ bool Coord::set_random_coord(Coord *coord, Grid *grid) {
         }
     }
 }
-  // Return if both coords are the same position
-  bool Coord::same_pos(Coord *pos1, Coord *pos2) {
+
+bool Coord::same_pos(Coord *pos1, Coord *pos2) {
     if(pos1->x == pos2->x && pos1->y == pos2->y)
-      return true;
+        return true;
     return false;
-  }
+}

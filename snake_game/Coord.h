@@ -1,6 +1,7 @@
+// X and Y coordinates in the 8x8 matrix
 #include <Arduino.h>
 #ifndef COORD_H
-// X and Y coordinates in the 8x8 matrix
+
 class Coord {
   public:
   uint8_t x;
