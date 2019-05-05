@@ -1,5 +1,5 @@
 #include "Snake.h"
-
+#include "Coord.h"
 // A gentle snake to play with
 // Implemented as a FIFO
 class Snake {

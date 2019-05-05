@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #ifndef GRID_H
+#include "Coord.h"
 // Grid representing the 8x8 dot-matrix
 //       x =
 // y = 0\0 1 2 3 ...
