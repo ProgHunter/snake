@@ -1,5 +1,6 @@
 
 #ifndef CONST_H
+#include "Arduino.h"
 // Constant related to the square dot-matrix size
 #define MATRIX_MIN 0
 #define MATRIX_MAX 7

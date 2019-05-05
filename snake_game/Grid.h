@@ -1,7 +1,10 @@
 #include <Arduino.h>
 
-#ifndef GRID_H
+#pragma once
 #include "Coord.h"
+#include "Snake.h"
+#include "Food.h"
+
 // Grid representing the 8x8 dot-matrix
 //       x =
 // y = 0\0 1 2 3 ...
@@ -9,7 +12,9 @@
 //     2
 //     ...        7\7
 //
+
 class Grid {
+
   public:
   uint8_t grid[];
 
@@ -28,5 +33,5 @@ class Grid {
 
   // Place the snake and the dot on the grid
   void update_snake_and_food(Grid *grid, Snake *snake, Food *ze_food);
-#define GRID_H
-#endif
+};
+

@@ -2,7 +2,8 @@
 // Implemented as a FIFO
 #include <Arduino.h>
 #pragma once
-
+#include "const.h"
+#include "Body.h"
 class Snake {
 public:
     Mvt_dir next_head_dir;

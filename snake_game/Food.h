@@ -1,6 +1,7 @@
 #ifndef FOOD_H
 #include "const.h"
 #include <Arduino.h>
+#include "Grid.h"
 class Food
 {
 private:
