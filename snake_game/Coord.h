@@ -11,7 +11,6 @@ class Coord {
 
   Coord(uint8_t init_x, uint8_t init_y);
 
-
   // Return if both coords are the same position
   bool same_pos(Coord *pos1, Coord *pos2);
 };

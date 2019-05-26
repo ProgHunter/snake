@@ -38,13 +38,13 @@ void setup() {
   pinMode(JOY_B_PIN, INPUT);  // Digital
   digitalWrite(JOY_B_PIN, HIGH);
 
-  // Intializes random number generator
+  // Initialize random number generator
   srand((unsigned) time(&t));
 
   grid = Grid();
   snake = Snake(UP, new Coord(4,4));
   ze_food = Food(new Coord(0,0));
-  ze_food.set_random_coord(&ze_food, &grid);
+  communicate_free_coord_to_set_new_food(grid, ze_food);
 }
 
 void loop() {
@@ -60,14 +60,14 @@ void loop() {
     if(game_progress) {
       switch(snake.move_update(&snake, &ze_food)) { // TODO: Check the return value to change the_game_state if necessary
         case 1:
-          if(ze_food.set_random_coord(&ze_food, &grid))
+          if(!communicate_free_coord_to_set_new_food(grid, ze_food))
           the_game_state = WIN;
           break;
         case 2:
           the_game_state = LOSE;
           break;
       }
-      grid.update_snake_and_food(&grid, &snake, &ze_food);
+      grid.update_snake_and_food(&grid, &snake, ze_food.location);
       game_progress = false;
     }
 
@@ -91,7 +91,7 @@ void new_game(Grod *grid, Snake *snake, Food *ze_food, Game_states *the_game_sta
   grid->reset(grid);
   snake->~Snake();
   snake = new Snake(up, new Coord(4,4));
-  ze_food->set_random_coord(ze_food, grid);
+  communicate_free_coord_to_set_new_food(grid, ze_food);
   *the_game_state = IN_PROGRESS;
 }
 
@@ -113,7 +113,18 @@ Mvt_dir getDirection(){
   }
 }
 
+// Ask the grid for free spots (coord), and pass them to food as potential new coord
+// Return false if no coord available
+bool communicate_free_coord_to_set_new_food(Grid *grid, Food *ze_food) {
+    Coord free[MATRIX_SIZE];
+    uint8_t free_length = grid->get_free_coord(grid, free);
 
+    if(!free_length)
+        return false;
+
+    ze_food->set_random_coord(ze_food, free, free_length);
+    return true;
+}
 
 // Draw the grid on the physical dot-matrix
 void draw(Grid *grid) {

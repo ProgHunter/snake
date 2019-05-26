@@ -14,7 +14,6 @@ public:
     Body *head;
 
     Snake(Mvt_dir init_direction, Coord *init_head);
-
     ~Snake();
 
     // Return true if the next position of the head is valid (not out-grid, not on itself)

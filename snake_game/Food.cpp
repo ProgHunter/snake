@@ -10,29 +10,12 @@ Food::~Food()
     location->~Coord();
 }
 
-bool Food::set_random_coord(Food *ze_food, Grid *grid) {
+void set_random_coord(Food *ze_food, Coord[] free, uint8_t free_length) {
     int random_number = 0;
-    uint8_t free_pos = 0;
-    // Count avable pos for the random dot
-    for(uint8_t i = 0; i < MATRIX_SIZE; i++) {
-        for(uint8_t j = 0 ; j < MATRIX_SIZE; j++) {
-        if(*grid[i] & (1 << MATRIX_SIZE - j) != 0)
-            free_pos++;
-        }
-    }
-    if(!free_pos)
-        return false;
-    random_number = rand() % free_pos;
-    // Count back free pos to place the dot
-    for(uint8_t i = 0; i < MATRIX_SIZE; i++) {
-        for(uint8_t j = 0 ; j < MATRIX_SIZE; j++) {
-        if(*grid[i] & (1 << MATRIX_SIZE - j) != 0)
-            if(!random_number) {
-            ze_food->location->x = j;
-            ze_food->localisation->y = i;
-            return true;
-            }
-            random_number--;
-        }
-    }
+    random_number = rand() % free_length;
+    ze_food->location = free[random_number];
+
+    for(uint8_t i = free_length; i > 0; i--)
+        if(i-1 != random_number)  // Destroy the tab of coord except the one we given to food as new location
+            free[i-1]->~Coord();
 }

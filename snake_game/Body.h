@@ -3,14 +3,12 @@
 
 #ifndef BODY_H
 class Body {
-  public:
+public:
+    Coord *part;
+    Body *next_part;
 
-
-  Body(Coord *init_part, Body *init_next_part);
-
-  ~Body();
-  Coord *part;
-  Body *next_part;
+    Body(Coord *init_part, Body *init_next_part);
+    ~Body();
 };
 
 #define BODY_H

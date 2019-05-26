@@ -14,12 +14,10 @@
 //
 
 class Grid {
-
   public:
   uint8_t grid[];
 
   Grid();
-
   ~Grid();
 
   // Activate a dot on the grid at a position
@@ -32,6 +30,8 @@ class Grid {
   void reset(Grid *grid);
 
   // Place the snake and the dot on the grid
-  void update_snake_and_food(Grid *grid, Snake *snake, Food *ze_food);
-};
+  void update_snake_and_food(Grid *grid, Snake *snake, Coord *ze_food_location);
 
+  // Add free coord to "free" and return the number of free positions.
+  uint8_t get_free_coord(Grid *grid, Coord[] free);
+};
